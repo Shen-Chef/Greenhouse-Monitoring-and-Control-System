@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Simple Greenhouse Charts</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 0; padding: 24px; background:#0f172a; color:#e2e8f0; }
+    h1 { margin: 0 0 8px; font-size: 22px; }
+    p { margin: 0 0 20px; color:#94a3b8; }
+    .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:16px; }
+    .card { background:#111827; border:1px solid #1f2937; border-radius:12px; padding:16px; }
+    canvas { background:#0b1220; border-radius:8px; }
+    .badge { display:inline-block; padding:4px 8px; border-radius:999px; font-size:12px; border:1px solid #334155; color:#cbd5e1; }
+    .muted { color:#94a3b8; }
+    .ok { color:#22c55e; }
+    .warn { color:#fde047; }
+    .alert { color:#f87171; }
+    .kv { display:flex; gap:8px; align-items:center; margin:6px 0; }
+    .kv label { width:150px; color:#a1a1aa; }
+  </style>
+</head>
+<body>
+  <h1>Greenhouse Charts</h1>
+  <p>Temperature, Humidity, and Soil Moisture</p>
+
+  <div class="grid">
+    <div class="card">
+      <h3>Temperature (°C)</h3>
+      <canvas id="tempChart" height="140"></canvas>
+      <div id="tempNow" style="margin-top:8px;color:#93c5fd">-- °C</div>
+    </div>
+    <div class="card">
+      <h3>Humidity (%)</h3>
+      <canvas id="humChart" height="140"></canvas>
+      <div id="humNow" style="margin-top:8px;color:#93c5fd">-- %</div>
+    </div>
+    <div class="card">
+      <h3>Soil Moisture (%)</h3>
+      <canvas id="soilChart" height="140"></canvas>
+      <div id="soilNow" style="margin-top:8px;color:#93c5fd">-- %</div>
+    </div>
+  </div>
+
+  <div class="grid" style="margin-top:16px;">
+    <div class="card">
+      <h3>Control Strategy</h3>
+      <div class="kv"><label>Mode</label><span class="badge" id="modeNow">--</span></div>
+      <div class="kv"><label>Temp target</label><span id="tempTarget" class="muted">--</span></div>
+      <div class="kv"><label>Humidity target</label><span id="humTarget" class="muted">60–70%</span></div>
+      <div class="kv"><label>Soil moisture</label><span id="soilTarget" class="muted">60–70% of field capacity</span></div>
+      <div class="kv"><label>Current status</label><span id="statusNow" class="muted">Waiting for data…</span></div>
+      <div style="height:12px"></div>
+      <h4 style="margin:8px 0 6px;">Soil recommendation</h4>
+      <div id="soilTypeInfo" class="muted">Loamy soil with pH 6.0–6.8 and EC 2.0–3.5 dS/m supports healthy tomato roots and nutrient uptake.</div>
+    </div>
+  </div>
+
+  <script>
+    const commonOptions = {
+      responsive: true,
+      animation: false,
+      scales: {
+        x: { display: false },
+        y: { beginAtZero: true }
+      },
+      plugins: { legend: { labels: { color: '#cbd5e1' } } }
+    };
+
+    const tempChart = new Chart(document.getElementById('tempChart'), {
+      type: 'line',
+      data: { labels: [], datasets: [{ label: 'Temperature °C', data: [], borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.2)', tension: 0.3 }] },
+      options: { ...commonOptions, scales: { ...commonOptions.scales, y: { beginAtZero: true, max: 60 } } }
+    });
+
+    const humChart = new Chart(document.getElementById('humChart'), {
+      type: 'line',
+      data: { labels: [], datasets: [{ label: 'Humidity %', data: [], borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.2)', tension: 0.3 }] },
+      options: { ...commonOptions, scales: { ...commonOptions.scales, y: { beginAtZero: true, max: 100 } } }
+    });
+
+    const soilChart = new Chart(document.getElementById('soilChart'), {
+      type: 'line',
+      data: { labels: [], datasets: [{ label: 'Soil %', data: [], borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.2)', tension: 0.3 }] },
+      options: { ...commonOptions, scales: { ...commonOptions.scales, y: { beginAtZero: true, max: 100 } } }
+    });
+
+    function isDayNow() {
+      const h = new Date().getHours();
+      return h >= 6 && h < 18;
+    }
+
+    function updateTargets() {
+      const day = isDayNow();
+      document.getElementById('modeNow').textContent = day ? 'Day' : 'Night';
+      document.getElementById('modeNow').className = 'badge ' + (day ? '' : '');
+      document.getElementById('tempTarget').textContent = day ? '22–30°C (day)' : '18–29°C (night)';
+      document.getElementById('humTarget').textContent = '40–80%';
+      document.getElementById('soilTarget').textContent = '40–80% of field capacity';
+      return day;
+    }
+
+    function statusLabel(value, min, max, unit) {
+      if (value == null) return '—';
+      if (value < min) return `${value}${unit} • low`;
+      if (value > max) return `${value}${unit} • high`;
+      return `${value}${unit} • ok`;
+    }
+
+    function pushPoint(chart, label, value) {
+      chart.data.labels.push(label);
+      chart.data.datasets[0].data.push(value);
+      if (chart.data.labels.length > 60) { chart.data.labels.shift(); chart.data.datasets[0].data.shift(); }
+      chart.update();
+    }
+
+    async function poll() {
+      try {
+        const res = await fetch('/api/data');
+        const data = await res.json();
+        if (data && !data.error) {
+          console.log('api/data', data);
+          const t = new Date().toLocaleTimeString();
+          pushPoint(tempChart, t, Number(data.temperature ?? 0));
+          pushPoint(humChart, t, Number(data.humidity ?? 0));
+          pushPoint(soilChart, t, Number(data.soil ?? 0));
+          document.getElementById('tempNow').textContent = `${Number(data.temperature ?? 0)} °C`;
+          document.getElementById('humNow').textContent = `${Number(data.humidity ?? 0)} %`;
+          document.getElementById('soilNow').textContent = `${Number(data.soil ?? 0)} %`;
+
+          const day = updateTargets();
+          const tempMin = day ? 22 : 18;
+          const tempMax = day ? 30 : 29;
+          const humMin = 40, humMax = 80;
+          const soilMin = 40, soilMax = 80;
+          const tempTxt = statusLabel(Number(data.temperature ?? 0), tempMin, tempMax, '°C');
+          const humTxt = statusLabel(Number(data.humidity ?? 0), humMin, humMax, '%');
+          const soilTxt = statusLabel(Number(data.soil ?? 0), soilMin, soilMax, '%');
+          let status = `Temp: ${tempTxt} | Humidity: ${humTxt} | Soil: ${soilTxt}`;
+          const statusEl = document.getElementById('statusNow');
+          statusEl.textContent = status;
+          const outOfRange = (Number(data.temperature ?? 0) < tempMin || Number(data.temperature ?? 0) > tempMax) || (Number(data.humidity ?? 0) < humMin || Number(data.humidity ?? 0) > humMax) || (Number(data.soil ?? 0) < soilMin || Number(data.soil ?? 0) > soilMax);
+          statusEl.className = outOfRange ? 'warn' : 'ok';
+        } else {
+          console.log('API error', data);
+        }
+      } catch (e) {
+        console.error('Fetch failed', e);
+      }
+    }
+
+    setInterval(poll, 3000);
+    updateTargets();
+    poll();
+  </script>
+</body>
+</html>
