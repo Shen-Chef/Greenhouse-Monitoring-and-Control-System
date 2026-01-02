@@ -1,0 +1,1625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Greenhouse Dashboard</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.9.1/lottie.min.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@2.15.0/dist/full.css" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    
+    /* Weather Animation Container */
+    .weather-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+      overflow: hidden;
+    }
+    
+    /* Day/Night Sky Gradient */
+    .weather-sky {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      transition: background 2s ease-in-out;
+    }
+    
+    /* Cloud Animation */
+    .clouds {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: url('https://assets.codepen.io/557388/clouds.png') repeat-x;
+      background-size: 2000px 100%;
+      opacity: 0.3;
+      animation: moveClouds 120s linear infinite;
+    }
+    
+    @keyframes moveClouds {
+      from { background-position: 0 0; }
+      to { background-position: -2000px 0; }
+    }
+    
+    /* Sun/Moon Element */
+    .sun-moon {
+      position: absolute;
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      box-shadow: 0 0 40px 15px rgba(255, 255, 0, 0.5);
+      transition: all 1s ease-in-out;
+      animation: sunMotion 60s linear infinite;
+    }
+    
+    @keyframes sunMotion {
+      0% { transform: translateX(-50%) translateY(100px) rotate(0deg); }
+      25% { transform: translateX(25%) translateY(50px) rotate(90deg); }
+      50% { transform: translateX(50%) translateY(0) rotate(180deg); }
+      75% { transform: translateX(75%) translateY(50px) rotate(270deg); }
+      100% { transform: translateX(100%) translateY(100px) rotate(360deg); }
+    }
+    
+    :root {
+      /* Neon Sci-Fi Dark Theme */
+      --bg-primary: #0a0a1a;
+      --bg-secondary: rgba(15, 15, 35, 0.9);
+      --bg-card: rgba(9, 9, 141, 0.6);
+      --bg-card-hover: rgba(30, 30, 70, 0.8);
+      --text-primary: #0ea932;
+      --text-secondary: #a0a0ff;
+      --border-color: rgba(0, 200, 255, 0.2);
+      --shadow-color: rgba(0, 150, 255, 0.1);
+      
+      /* Neon Theme Colors */
+      --primary: #00f0ff;
+      --secondary: #b362ff;
+      --accent: #ff2d75;
+      --success: #00ff9d;
+      --warning: #ffcc00;
+      --danger: #ff3860;
+      --info: #00b8ff;
+      
+      /* Neon Glow Effects */
+      --neon-glow: 0 0 10px rgba(0, 240, 255, 0.7),
+                   0 0 20px rgba(0, 200, 255, 0.5),
+                   0 0 30px rgba(0, 150, 255, 0.3);
+      --neon-text-glow: 0 0 5px #fff,
+                        0 0 10px #fff,
+                        0 0 15px var(--primary),
+                        0 0 20px var(--primary);
+      
+      /* Status Colors */
+      --online: #34d399;
+      --offline: #f87171;
+      --warning: #fbbf24;
+      
+      /* Chart Colors */
+      --chart-temp: #f87171;
+      --chart-humidity: #60a5fa;
+      --chart-soil: #34d399;
+      --chart-bg: rgba(255, 255, 255, 0.05);
+      
+      /* Glassmorphism */
+      --glass-blur: blur(12px);
+      --glass-border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    /* Light Theme - Neon Sci-Fi */
+    [data-theme="light"] {
+      --bg-primary: #f0f4ff;
+      --bg-secondary: rgba(230, 235, 255, 0.9);
+      --bg-card: rgba(240, 245, 255, 0.7);
+      --bg-card-hover: rgba(220, 230, 255, 0.9);
+      --text-primary: #18905c;
+      --text-secondary: #3a3a7d;
+      --border-color: rgba(0, 150, 255, 0.3);
+      --shadow-color: rgba(0, 100, 255, 0.1);
+      
+      /* Light Theme Neon Colors */
+      --primary: #0066ff;
+      --secondary: #7f00ff;
+      --accent: #ff0055;
+      --success: #00c853;
+      --warning: #ffab00;
+      --danger: #ff1744;
+      --info: #00b0ff;
+      
+      /* Reduced Neon Glow for Light Mode */
+      --neon-glow: 0 0 8px rgba(0, 150, 255, 0.4);
+      --neon-text-glow: 0 0 3px var(--primary);
+      
+      /* Chart colors */
+      --chart-temp: #ff3860;
+      --chart-humidity: #00b8ff;
+      --chart-soil: #00c853;
+      
+      /* Glassmorphism */
+      --glass-blur: blur(8px);
+      --glass-border: 1px solid rgba(0, 150, 255, 0.2);
+    }
+    
+    body {
+      background-color: var(--bg-primary);
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(0, 200, 255, 0.1) 0px, transparent 50%),
+        radial-gradient(at 98% 1%, rgba(179, 98, 255, 0.15) 0px, transparent 50%),
+        linear-gradient(135deg, var(--bg-primary) 0%, #0a0a1a 100%);
+      color: var(--text-primary);
+      font-family: 'Rajdhani', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+      line-height: 1.6;
+      text-rendering: optimizeLegibility;
+      -webkit-font-smoothing: antialiased;
+    }
+    
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 2rem 1rem;
+      position: relative;
+      z-index: 1;
+    }
+    
+    /* Sci-Fi Grid Background */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-image: 
+        linear-gradient(rgba(0, 200, 255, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 200, 255, 0.05) 1px, transparent 1px);
+      background-size: 40px 40px;
+      z-index: -1;
+      opacity: 0.3;
+    }
+    
+    /* Animated Scanline Effect */
+    @keyframes scanline {
+      0% { transform: translateY(-100%); }
+      100% { transform: translateY(100%); }
+    }
+    
+    .dashboard-card::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, 
+        transparent,
+        rgba(0, 200, 255, 0.5),
+        transparent);
+      animation: scanline 6s linear infinite;
+      opacity: 0.5;
+      pointer-events: none;
+    }
+    
+    .dashboard-card {
+      background: var(--card-bg, var(--bg-card));
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
+      border-radius: 12px;
+      box-shadow: 0 8px 32px 0 var(--shadow-color),
+                  inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+      transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.1);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      border: 1px solid var(--border-color);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    /* Neon Border Effect on Hover */
+    .dashboard-card::before {
+      content: '';
+      position: absolute;
+      top: -2px;
+      left: -2px;
+      right: -2px;
+      bottom: -2px;
+      background: linear-gradient(45deg, var(--primary), var(--secondary), var(--accent));
+      z-index: -1;
+      border-radius: 14px;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    
+    .dashboard-card:hover::before {
+      opacity: 0.7;
+      filter: blur(4px);
+    }
+    
+    .dashboard-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05));
+      z-index: -1;
+      border-radius: 16px;
+    }
+    
+    .dashboard-card:hover {
+      background: var(--bg-card-hover);
+      transform: translateY(-4px) scale(1.01);
+      box-shadow: 0 12px 24px -8px var(--shadow-color);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+    
+    .metric-value {
+      font-size: 2.75rem;
+      font-weight: 700;
+      color: var(--text-heading, var(--text-primary));
+      margin: 0.5rem 0;
+      transition: all 0.3s ease;
+      text-shadow: var(--neon-text-glow);
+      font-family: 'Orbitron', 'Rajdhani', sans-serif;
+      letter-spacing: 1px;
+    }
+    
+    /* Humidity Wave Animation */
+    .humidity-wave {
+      position: relative;
+      width: 100%;
+      height: 60px;
+      margin: 10px 0;
+      overflow: hidden;
+      border-radius: 8px;
+      background: rgba(0, 0, 0, 0.2);
+    }
+    
+    .humidity-level {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 0%;
+      background: linear-gradient(180deg, 
+        rgba(0, 200, 255, 0.1) 0%,
+        rgba(0, 200, 255, 0.3) 50%,
+        rgba(0, 150, 255, 0.5) 100%);
+      transition: height 1s ease-out;
+      overflow: hidden;
+    }
+    
+    .humidity-level::before,
+    .humidity-level::after {
+      content: '';
+      position: absolute;
+      width: 200%;
+      height: 200%;
+      top: -50%;
+      left: 0;
+      background: radial-gradient(circle at 50% 50%, 
+        rgba(0, 200, 255, 0.1) 0%,
+        rgba(0, 200, 255, 0) 60%);
+      border-radius: 40%;
+      animation: wave 15s infinite linear;
+    }
+    
+    .humidity-level::after {
+      opacity: 0.5;
+      animation: wave 20s infinite linear reverse;
+    }
+    
+    @keyframes wave {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    .metric-label {
+      font-size: 0.875rem;
+      color: var(--text-muted, var(--text-secondary));
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      transition: color 0.3s;
+    }
+    
+    .status-badge {
+      padding: 0.25rem 0.75rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      display: inline-block;
+      margin-top: 0.5rem;
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid var(--border-color);
+      box-shadow: 0 0 10px rgba(0, 200, 255, 0.1);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .status-badge::after {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      right: -50%;
+      bottom: -50%;
+      background: linear-gradient(
+        to bottom right,
+        rgba(255, 255, 255, 0) 45%,
+        rgba(255, 255, 255, 0.1) 48%,
+        rgba(255, 255, 255, 0.1) 52%,
+        rgba(255, 255, 255, 0) 55%
+      );
+      transform: rotate(45deg);
+      animation: shine 3s infinite;
+    }
+    
+    .status-online {
+      background: linear-gradient(135deg, 
+        rgba(0, 255, 157, 0.1) 0%,
+        rgba(0, 200, 127, 0.2) 100%);
+      color: var(--success);
+      text-shadow: 0 0 8px rgba(0, 255, 157, 0.5);
+      border-color: var(--success);
+    }
+    
+    .status-offline {
+      background: linear-gradient(135deg, 
+        rgba(255, 38, 85, 0.1) 0%,
+        rgba(200, 38, 85, 0.2) 100%);
+      color: var(--danger);
+      text-shadow: 0 0 8px rgba(255, 38, 85, 0.5);
+      border-color: var(--danger);
+    }
+    
+    .status-warning {
+      background: linear-gradient(135deg, 
+        rgba(255, 196, 0, 0.1) 0%,
+        rgba(200, 156, 0, 0.2) 100%);
+      color: var(--warning);
+      text-shadow: 0 0 8px rgba(255, 196, 0, 0.5);
+      border-color: var(--warning);
+    }
+    
+    .control-btn {
+      padding: 0.6rem 1.2rem;
+      border-radius: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      margin: 0.25rem;
+      border: none;
+      font-size: 0.9rem;
+      backdrop-filter: blur(5px);
+      -webkit-backdrop-filter: blur(5px);
+      position: relative;
+      overflow: hidden;
+      z-index: 1;
+    }
+    
+    .control-btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.2), rgba(255,255,255,0.1));
+      z-index: -1;
+      border-radius: 10px;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    
+    .control-btn:hover::before {
+      opacity: 1;
+    }
+    
+    .btn-on {
+      background-color: var(--success);
+      color: white;
+    }
+    
+    .btn-off {
+      background-color: var(--danger);
+      color: white;
+    }
+    
+    .btn-primary {
+      background-color: var(--primary);
+      color: white;
+    }
+    
+    .btn-secondary {
+      background-color: var(--secondary);
+      color: white;
+    }
+    
+    .btn-warning {
+      background-color: var(--warning);
+      color: white;
+    }
+    
+    .chart-container {
+      position: relative;
+      width: 100%;
+      height: 100px;
+      margin-top: 1rem;
+    }
+    
+    .sensor-section {
+      margin-bottom: 2rem;
+    }
+    
+    .sensor-section .dashboard-card {
+      margin-bottom: 0.5rem;
+    }
+    
+    /* Header Styles */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    
+    .header h1 {
+      margin: 0;
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+    
+    .header p {
+      margin: 0.25rem 0 0;
+      color: var(--text-secondary);
+    }
+    
+    /* Toggle Switches */
+    .toggle-container {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+    
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 50px;
+      height: 24px;
+    }
+    
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      transition: .4s;
+      border-radius: 34px;
+    }
+    
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 16px;
+      width: 16px;
+      left: 4px;
+      bottom: 4px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+    
+    input:checked + .slider {
+      background-color: var(--primary);
+    }
+    
+    input:checked + .slider:before {
+      transform: translateX(26px);
+    }
+    
+    /* Theme Toggle Buttons - Sci-Fi Style */
+    #day-mode, #night-mode {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 44px;
+      height: 44px;
+      border: none;
+      cursor: pointer;
+      outline: none;
+      border-radius: 8px;
+      background: rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2),
+                  inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    #day-mode::before,
+    #night-mode::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(135deg, 
+        rgba(255, 255, 255, 0.1) 0%,
+        rgba(255, 255, 255, 0) 100%);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    
+    #day-mode:hover::before,
+    #night-mode:hover::before {
+      opacity: 1;
+    }
+    
+    #day-mode svg,
+    #night-mode svg {
+      width: 20px;
+      height: 20px;
+      transition: all 0.3s ease;
+    }
+    
+    #day-mode.active,
+    #night-mode.active {
+      background: var(--primary);
+      box-shadow: 0 0 15px var(--primary);
+    }
+    
+    #day-mode.active {
+      background: linear-gradient(135deg, #ffcc00, #ff9500);
+      box-shadow: 0 0 15px rgba(255, 204, 0, 0.7);
+    }
+    
+    #night-mode.active {
+      background: linear-gradient(135deg, #6e45e2, #88d3ce);
+      box-shadow: 0 0 15px rgba(110, 69, 226, 0.7);
+    }
+    
+    /* Active state for theme toggles */
+    [data-theme="light"] #day-mode,
+    [data-theme="dark"] #night-mode {
+      background: var(--primary);
+      box-shadow: 0 0 15px var(--primary);
+    }
+    
+    /* Alert Box */
+    .alert {
+      padding: 0.75rem 1rem;
+      border-radius: 0.5rem;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-weight: 500;
+    }
+    
+    .alert-warning {
+      background-color: rgba(245, 158, 11, 0.1);
+      color: var(--warning);
+      border-left: 4px solid var(--warning);
+    }
+    
+    .alert-danger {
+      background-color: rgba(239, 68, 68, 0.1);
+      color: var(--danger);
+      border-left: 4px solid var(--danger);
+    }
+    
+    .alert-success {
+      background-color: rgba(16, 185, 129, 0.1);
+      color: var(--success);
+      border-left: 4px solid var(--success);
+    }
+    
+    /* Responsive Adjustments */
+    @media (max-width: 768px) {
+      .metric-value {
+        font-size: 2rem;
+      }
+      
+      .control-btn {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.875rem;
+      }
+      
+      .chart-container {
+        height: 220px;
+      }
+      
+      .header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      
+      .header-actions {
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+    }
+    
+    @media (max-width: 480px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .dashboard-card {
+        padding: 1rem;
+      }
+      
+      .metric-value {
+        font-size: 1.75rem;
+      }
+      
+      .control-btn {
+        width: 100%;
+        margin: 0.25rem 0;
+      }
+      
+      .btn-group {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Weather Animation Background -->
+  <div class="weather-container">
+    <div class="weather-sky" id="weatherSky"></div>
+    <div class="clouds"></div>
+    <div class="sun-moon" id="sunMoon"></div>
+    <div id="lottie-weather"></div>
+  </div>
+  <div class="container">
+    <!-- Header -->
+    <header class="flex justify-between items-center py-4 mb-6">
+      <div>
+        <h1 class="text-2xl font-bold">Greenhouse Control Dashboard</h1>
+        <p class="text-sm text-gray-400">Rajkot, India • Real-time monitoring</p>
+      </div>
+      <div class="flex items-center space-x-6">
+        <!-- Theme Toggle -->
+        <div class="flex items-center">
+          <button id="day-mode" class="flex items-center justify-center w-10 h-10 rounded-full transition-colors duration-200" title="Day Mode">
+            <svg class="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clip-rule="evenodd"></path>
+            </svg>
+          </button>
+          <button id="night-mode" class="flex items-center justify-center w-10 h-10 rounded-full bg-blue-600 text-white transition-colors duration-200" title="Night Mode">
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Status Bar -->
+    <div class="bg-gray-800 rounded-lg p-3 mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center text-sm">
+      <div class="flex flex-wrap items-center gap-4 mb-2 sm:mb-0">
+        <span class="font-medium">Mode: <span id="current-mode" class="text-purple-400">NIGHT</span></span>
+        <span>Temp: <span id="temp-status" class="font-mono">--°C</span></span>
+        <span>Hum: <span id="humidity-status" class="font-mono">--%</span></span>
+        <span>Soil: <span id="soil-status" class="font-mono">--%</span></span>
+      </div>
+      <div class="text-gray-400 text-sm sm:text-base">Last updated: <span id="last-updated" class="font-mono">--:--:--</span></div>
+    </div>
+    
+    <!-- Alert Container -->
+    <div id="alert-container" class="mb-6"></div>
+
+    <!-- Sensor Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <!-- Temperature Card -->
+      <div class="dashboard-card">
+        <div class="flex justify-between items-start">
+          <div>
+            <div class="text-sm text-gray-400 mb-1">Temperature</div>
+            <div id="current-temp" class="text-3xl font-bold">--°C</div>
+            <div class="text-xs text-gray-400 mt-1">Target: 18-25°C</div>
+          </div>
+          <div class="status-badge status-warning">Live</div>
+        </div>
+        <div class="chart-container">
+          <canvas id="tempChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Humidity Card -->
+      <div class="dashboard-card">
+        <div class="flex justify-between items-start">
+          <div>
+            <div class="text-sm text-gray-400 mb-1">Humidity</div>
+            <div id="current-humidity" class="text-3xl font-bold">--%</div>
+            <div class="text-xs text-gray-400 mt-1">Target: 40-60%</div>
+          </div>
+          <div class="status-badge status-online">Live</div>
+        </div>
+        <div class="chart-container">
+          <canvas id="humChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Soil Moisture Card -->
+      <div class="dashboard-card">
+        <div class="flex justify-between items-start">
+          <div>
+            <div class="text-sm text-gray-400 mb-1">Soil Moisture</div>
+            <div id="current-soil" class="text-3xl font-bold">--%</div>
+            <div class="text-xs text-gray-400 mt-1">Target: >40%</div>
+          </div>
+          <div class="status-badge status-offline">Live</div>
+        </div>
+        <div class="chart-container">
+          <canvas id="soilChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI Temperature Forecast -->
+    <div class="dashboard-card mb-8">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-lg font-semibold">AI Temperature Forecast (Next 6 Hours)</h2>
+        <span class="text-xs bg-blue-900 text-blue-300 px-2 py-1 rounded">XGBOOST</span>
+      </div>
+      <p class="text-sm text-gray-400 mb-4">Trained on your 2760+ greenhouse records</p>
+      
+      <div class="flex overflow-x-auto pb-2 -mx-2" id="ai-forecast">
+        <!-- AI forecast cards will be added here by JavaScript -->
+      </div>
+    </div>
+    
+    <!-- Performance Donut Charts -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+      <!-- Temperature Donut -->
+      <div class="dashboard-card">
+        <h2 class="text-lg font-semibold mb-4">Avg Temperature (24h)</h2>
+        <div class="relative h-48">
+          <canvas id="tempDonutChart"></canvas>
+          <div class="absolute inset-0 flex items-center justify-center flex-col">
+            <span id="tempDonutValue" class="text-3xl font-bold">0°C</span>
+            <span class="text-sm text-gray-400">24h Average</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Humidity Donut -->
+      <div class="dashboard-card">
+        <h2 class="text-lg font-semibold mb-4">Avg Humidity (24h)</h2>
+        <div class="relative h-48">
+          <canvas id="humDonutChart"></canvas>
+          <div class="absolute inset-0 flex items-center justify-center flex-col">
+            <span id="humDonutValue" class="text-3xl font-bold">0%</span>
+            <span class="text-sm text-gray-400">24h Average</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Soil Moisture Donut -->
+      <div class="dashboard-card">
+        <h2 class="text-lg font-semibold mb-4">Avg Soil Moisture (24h)</h2>
+        <div class="relative h-48">
+          <canvas id="soilDonutChart"></canvas>
+          <div class="absolute inset-0 flex items-center justify-center flex-col">
+            <span id="soilDonutValue" class="text-3xl font-bold">0%</span>
+            <span class="text-sm text-gray-400">24h Average</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Weather Forecast Card -->
+    <div class="dashboard-card">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-lg font-semibold">Weather Forecast</h2>
+        <button class="text-sm text-blue-400 hover:text-blue-300 flex items-center">
+          <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+          </svg>
+          Refresh
+        </button>
+      </div>
+      
+      <!-- Current Weather -->
+      <div class="bg-gray-800 rounded-lg p-4 mb-6">
+        <div class="flex items-center">
+          <div class="text-5xl mr-4">🌤️</div>
+          <div>
+            <div class="text-2xl font-bold">24°C</div>
+            <div class="text-gray-400">Clear</div>
+            <div class="text-sm text-gray-400">Clear sky</div>
+          </div>
+          <div class="ml-auto text-right">
+            <div class="text-sm">H: 26° L: 18°</div>
+            <div class="text-sm">Humidity: 65%</div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 5-Day Forecast -->
+      <div class="grid grid-cols-2 sm:grid-cols-5 gap-4" id="weather-forecast">
+        <!-- Weather forecast cards will be added here by JavaScript -->
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="text-center text-sm text-gray-500 mt-8 py-4 border-t border-gray-800">
+      <p>Greenhouse Monitoring System • Last updated: <span id="last-updated">--:--:--</span> • Status: <span id="system-status" class="text-green-400">Online</span></p>
+    </footer>
+  </div>
+
+  <script>
+    // Weather Animation
+    function initWeatherAnimation() {
+      const weatherSky = document.getElementById('weatherSky');
+      const sunMoon = document.getElementById('sunMoon');
+      const lottieContainer = document.getElementById('lottie-weather');
+      
+      // Check if it's day or night (using local time)
+      const hours = new Date().getHours();
+      const isDay = hours >= 6 && hours < 18;
+      
+      // Set initial theme
+      updateWeatherTheme(isDay);
+      
+      // Update theme based on time of day
+      setInterval(() => {
+        const currentHour = new Date().getHours();
+        const newIsDay = currentHour >= 6 && currentHour < 18;
+        if (newIsDay !== isDay) {
+          updateWeatherTheme(newIsDay);
+        }
+      }, 60000); // Check every minute
+      
+      // Lottie animation setup
+      const animData = {
+        container: lottieContainer,
+        renderer: 'svg',
+        loop: true,
+        autoplay: true,
+        path: isDay 
+          ? 'https://assets9.lottiefiles.com/packages/lf20_2p2obr0n.json' // Daytime animation
+          : 'https://assets9.lottiefiles.com/packages/lf20_2p2obr0n.json' // Nighttime animation
+      };
+      
+      const anim = lottie.loadAnimation(animData);
+      
+      // Handle window resize
+      window.addEventListener('resize', () => {
+        anim.resize();
+      });
+      
+      function updateWeatherTheme(isDayTime) {
+        if (isDayTime) {
+          // Day theme
+          weatherSky.style.background = 'linear-gradient(to bottom, #87CEEB 0%, #1E90FF 100%)';
+          sunMoon.style.background = 'radial-gradient(circle, #FFD700, #FFA500)';
+          document.body.classList.remove('night-theme');
+          document.body.classList.add('day-theme');
+        } else {
+          // Night theme
+          weatherSky.style.background = 'linear-gradient(to bottom, #0F2027 0%, #203A43 50%, #2C5364 100%)';
+          sunMoon.style.background = 'radial-gradient(circle, #E2E2E2, #A9A9A9)';
+          document.body.classList.remove('day-theme');
+          document.body.classList.add('night-theme');
+        }
+      }
+    }
+    
+    // Initialize weather animation when the page loads
+    window.addEventListener('load', initWeatherAnimation);
+    
+    // Add parallax effect
+    document.addEventListener('mousemove', (e) => {
+      const x = e.clientX / window.innerWidth;
+      const y = e.clientY / window.innerHeight;
+      const weatherContainer = document.querySelector('.weather-container');
+      weatherContainer.style.transform = `translate(${x * 10}px, ${y * 10}px)`;
+    });
+    // Configuration
+    const CONFIG = {
+      // Sensor thresholds
+      thresholds: {
+        tempHigh: 30,     // °C
+        tempCritical: 35, // °C
+        soilLow: 30,      // %
+        soilCritical: 20  // %
+      },
+      // UI settings
+      theme: localStorage.getItem('theme') || 'light',
+      updateInterval: 5000, // 5 seconds
+      maxDataPoints: 30
+    };
+
+    // State
+    let tempData = [];
+    let humData = [];
+    let soilData = [];
+    let labels = [];
+    let lastAlert = {
+      type: null,
+      message: '',
+      timestamp: 0
+    };
+
+    // DOM Elements
+    const elTemp = document.getElementById("current-temp");
+    const elHum = document.getElementById("current-humidity");
+    const elSoil = document.getElementById("current-soil");
+    const elUpd = document.getElementById("last-updated");
+    const elSystemStatus = document.getElementById("system-status");
+    const elAlertContainer = document.getElementById("alert-container");
+    const themeToggle = document.getElementById('theme-toggle');
+    const dayModeBtn = document.getElementById('day-mode');
+    const nightModeBtn = document.getElementById('night-mode');
+    
+    function initTheme() {
+      // Check for saved theme preference or use system preference
+      const savedTheme = localStorage.getItem('theme');
+      const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      
+      // Set initial theme
+      const initialTheme = savedTheme || (systemPrefersDark ? 'dark' : 'light');
+      setTheme(initialTheme);
+    }
+    
+    function setTheme(theme) {
+      // Update the theme attribute
+      document.documentElement.setAttribute('data-theme', theme);
+      localStorage.setItem('theme', theme);
+      
+      // Update button states
+      if (theme === 'dark') {
+        dayModeBtn.classList.remove('bg-white', 'text-blue-600');
+        dayModeBtn.classList.add('text-gray-700', 'dark:text-gray-300');
+        nightModeBtn.classList.add('bg-blue-600', 'text-white');
+        nightModeBtn.classList.remove('bg-transparent', 'text-gray-400');
+      } else {
+        dayModeBtn.classList.add('bg-white', 'text-blue-600');
+        dayModeBtn.classList.remove('text-gray-700', 'dark:text-gray-300');
+        nightModeBtn.classList.remove('bg-blue-600', 'text-white');
+        nightModeBtn.classList.add('bg-transparent', 'text-gray-400');
+      }
+      
+      // Update charts to match theme
+      if (window.charts) {
+        window.charts.forEach(chart => chart.update('none'));
+      }
+      
+      // Update status bar
+      updateStatusBar();
+    }
+    
+    // Event Listeners for theme toggles
+    dayModeBtn?.addEventListener('click', () => setTheme('light'));
+    nightModeBtn?.addEventListener('click', () => setTheme('dark'));
+
+    // Show Alert
+    function showAlert(message, type = 'info') {
+      // Don't show duplicate alerts
+      if (lastAlert.message === message && (Date.now() - lastAlert.timestamp) < 30000) {
+        return;
+      }
+      
+      lastAlert = {
+        type,
+        message,
+        timestamp: Date.now()
+      };
+      
+      const alertEl = document.createElement('div');
+      alertEl.className = `alert alert-${type}`;
+      alertEl.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-${type === 'danger' ? 'alert-triangle' : type === 'warning' ? 'alert-circle' : 'info'}">
+          ${type === 'danger' ? '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line>' : 
+            type === 'warning' ? '<circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line>' :
+            '<circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line>'}
+        </svg>
+        <span>${message}</span>
+        <button class="ml-auto text-current opacity-75 hover:opacity-100" onclick="this.parentElement.remove()">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-x">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      `;
+      
+      elAlertContainer.insertBefore(alertEl, elAlertContainer.firstChild);
+      
+      // Auto-remove alert after 10 seconds
+      setTimeout(() => {
+        if (alertEl.parentNode === elAlertContainer) {
+          alertEl.style.opacity = '0';
+          setTimeout(() => alertEl.remove(), 300);
+        }
+      }, 10000);
+    }
+
+    // Check Sensor Thresholds
+    function checkThresholds(data) {
+      if (!data) return;
+      
+      const { temperature, humidity, soil } = data;
+      const now = Date.now();
+      
+      // Check temperature
+      if (temperature >= CONFIG.thresholds.tempCritical) {
+        showAlert(`Critical: High temperature detected (${temperature.toFixed(1)}°C)!`, 'danger');
+        if (CONFIG.isAutoMode) {
+          controlDevice('fan', 'on');
+        }
+      } else if (temperature >= CONFIG.thresholds.tempHigh) {
+        showAlert(`Warning: Temperature is getting high (${temperature.toFixed(1)}°C)`, 'warning');
+      }
+      
+      // Check soil moisture
+      if (soil <= CONFIG.thresholds.soilCritical) {
+        showAlert(`Critical: Very low soil moisture (${soil}%)!`, 'danger');
+        if (CONFIG.isAutoMode && now - CONFIG.autoMode.lastPumpTime > CONFIG.autoMode.minPumpInterval) {
+          controlDevice('pump', 'on');
+          CONFIG.autoMode.lastPumpTime = now;
+          // Auto turn off after 10 seconds
+          setTimeout(() => controlDevice('pump', 'off'), 10000);
+        }
+      } else if (soil <= CONFIG.thresholds.soilLow) {
+        showAlert(`Warning: Low soil moisture (${soil}%)`, 'warning');
+      }
+      
+      // Auto mode actions
+      if (CONFIG.isAutoMode) {
+        // Control fan based on temperature
+        if (temperature > CONFIG.autoMode.fanTempThreshold) {
+          controlDevice('fan', 'on');
+        } else {
+          controlDevice('fan', 'off');
+        }
+        
+        // Control pump based on soil moisture
+        if (soil < CONFIG.autoMode.pumpSoilThreshold && 
+            now - CONFIG.autoMode.lastPumpTime > CONFIG.autoMode.minPumpInterval) {
+          controlDevice('pump', 'on');
+          CONFIG.autoMode.lastPumpTime = now;
+          // Auto turn off after 10 seconds
+          setTimeout(() => controlDevice('pump', 'off'), 10000);
+        }
+      }
+    }
+
+    // Initialize AI Forecast
+    function initAIForecast() {
+      const forecastContainer = document.getElementById('ai-forecast');
+      const now = new Date();
+      
+      // Sample forecast data (replace with actual API data)
+      const forecastData = [
+        { time: 'Now', temp: 25.1 },
+        { time: now.getHours() + 1, temp: 25.8 },
+        { time: now.getHours() + 2, temp: 26.4 },
+        { time: now.getHours() + 3, temp: 26.1 },
+        { time: now.getHours() + 4, temp: 25.7 },
+        { time: now.getHours() + 5, temp: 25.3 }
+      ];
+      
+      forecastContainer.innerHTML = forecastData.map(item => `
+        <div class="flex-shrink-0 bg-gray-800 rounded-lg p-4 mx-2 w-24 text-center">
+          <div class="text-sm font-medium">${item.time}</div>
+          <div class="text-2xl font-bold my-2">${item.temp}°</div>
+          <div class="text-xs text-gray-400">${Math.round(item.temp)}°</div>
+        </div>
+      `).join('');
+    }
+    
+    // Initialize Weather Forecast
+    function initWeatherForecast() {
+      const forecastContainer = document.getElementById('weather-forecast');
+      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const today = new Date();
+      
+      // Sample weather data (replace with actual API data)
+      const weatherData = [
+        { day: days[today.getDay()], icon: '☀️', temp: 25, high: 26, low: 18 },
+        { day: days[(today.getDay() + 1) % 7], icon: '🌤️', temp: 24, high: 25, low: 17 },
+        { day: days[(today.getDay() + 2) % 7], icon: '⛅', temp: 23, high: 24, low: 16 },
+        { day: days[(today.getDay() + 3) % 7], icon: '🌧️', temp: 22, high: 23, low: 17 },
+        { day: days[(today.getDay() + 4) % 7], icon: '🌦️', temp: 24, high: 25, low: 18 }
+      ];
+      
+      forecastContainer.innerHTML = weatherData.map(day => `
+        <div class="bg-gray-800 rounded-lg p-3 text-center">
+          <div class="text-sm font-medium mb-1">${day.day}</div>
+          <div class="text-2xl my-2">${day.icon}</div>
+          <div class="text-sm">${day.temp}°</div>
+          <div class="text-xs text-gray-400">H:${day.high}° L:${day.low}°</div>
+        </div>
+      `).join('');
+    }
+    
+    // Store charts for theme updates
+    window.charts = [];
+    
+    // Initialize Donut Charts
+    const donutOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '70%',
+      plugins: {
+        legend: {
+          display: false
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              return `${context.label}: ${context.raw}%`;
+            }
+          }
+        }
+      }
+    };
+    
+    // Temperature Donut Chart
+    const tempDonutCtx = document.getElementById('tempDonutChart').getContext('2d');
+    const tempDonutChart = new Chart(tempDonutCtx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Used', 'Remaining'],
+        datasets: [{
+          data: [0, 100],
+          backgroundColor: [
+            'rgba(239, 68, 68, 0.8)',  // Red for temperature
+            'rgba(31, 41, 55, 0.2)'    // Darker background
+          ],
+          borderWidth: 0,
+          circumference: 240,
+          rotation: 240
+        }]
+      },
+      options: donutOptions
+    });
+    
+    // Humidity Donut Chart
+    const humDonutCtx = document.getElementById('humDonutChart').getContext('2d');
+    const humDonutChart = new Chart(humDonutCtx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Used', 'Remaining'],
+        datasets: [{
+          data: [0, 100],
+          backgroundColor: [
+            'rgba(59, 130, 246, 0.8)',  // Blue for humidity
+            'rgba(31, 41, 55, 0.2)'     // Darker background
+          ],
+          borderWidth: 0,
+          circumference: 240,
+          rotation: 240
+        }]
+      },
+      options: donutOptions
+    });
+    
+    // Soil Moisture Donut Chart
+    const soilDonutCtx = document.getElementById('soilDonutChart').getContext('2d');
+    const soilDonutChart = new Chart(soilDonutCtx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Used', 'Remaining'],
+        datasets: [{
+          data: [0, 100],
+          backgroundColor: [
+            'rgba(16, 185, 129, 0.8)',  // Green for soil
+            'rgba(31, 41, 55, 0.2)'     // Darker background
+          ],
+          borderWidth: 0,
+          circumference: 240,
+          rotation: 240
+        }]
+      },
+      options: donutOptions
+    });
+    
+    // Add to charts array for theme updates
+    window.charts.push(tempDonutChart, humDonutChart, soilDonutChart);
+    
+    // Initialize Charts
+    const chartOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: {
+        duration: 300
+      },
+      scales: {
+        x: {
+          display: true,
+          title: {
+            display: true,
+            text: 'Time'
+          }
+        },
+        y: {
+          display: true,
+          title: {
+            display: true,
+            text: 'Value'
+          }
+        }
+      }
+    };
+
+    const tempChart = new Chart(document.getElementById("tempChart"), {
+      type: "line",
+      data: {
+        labels: [],
+        datasets: [{
+          label: "Temperature (°C)",
+          data: [],
+          borderColor: '#3b82f6',
+          borderWidth: 2,
+          tension: 0.3,
+          fill: false
+        }]
+      },
+      options: chartOptions
+    });
+
+    const humChart = new Chart(document.getElementById("humChart"), {
+      type: "line",
+      data: {
+        labels: [],
+        datasets: [{
+          label: "Humidity (%)",
+          data: [],
+          borderColor: '#10b981',
+          borderWidth: 2,
+          tension: 0.3,
+          fill: false
+        }]
+      },
+      options: chartOptions
+    });
+
+    const soilChart = new Chart(document.getElementById("soilChart"), {
+      type: "line",
+      data: {
+        labels: [],
+        datasets: [{
+          label: "Soil Moisture (%)",
+          data: [],
+          borderColor: '#8b5cf6',
+          borderWidth: 2,
+          tension: 0.3,
+          fill: false
+        }]
+      },
+      options: chartOptions
+    });
+
+    // API Functions
+    async function fetchSensorData() {
+      try {
+        // Fetch the latest reading from Blynk
+        const response = await fetch('/api/data');
+        if (!response.ok) throw new Error('Network response was not ok');
+        const data = await response.json();
+        
+        if (data.error) {
+          console.error('Error from Blynk:', data.error);
+          return null;
+        }
+        
+        // Format the data to match the expected structure
+        const formattedData = {
+          temperature: parseFloat(data.temperature) || 0,
+          humidity: parseFloat(data.humidity) || 0,
+          soil: parseInt(data.soil) || 0,
+          pump: Boolean(data.pump),
+          fan: Boolean(data.fan),
+          timestamp: new Date().toISOString()
+        };
+        
+        // For historical data (used in donut charts), we'll use the last 24 hours from the database
+        const historyResponse = await fetch('/api/readings?limit=1000');
+        if (historyResponse.ok) {
+          const historyData = await historyResponse.json();
+          if (historyData && historyData.length > 0) {
+            calculateDailyAverages(historyData);
+          }
+        }
+        
+        return formattedData;
+      } catch (error) {
+        console.error('Error fetching sensor data:', error);
+        return null;
+      }
+    }
+
+    async function controlDevice(device, action) {
+      try {
+        const response = await fetch(`/api/toggle?device=${device}&action=${action}`, {
+          method: 'POST'
+        });
+        if (!response.ok) throw new Error('Failed to control device');
+        return await response.json();
+      } catch (error) {
+        console.error('Error controlling device:', error);
+        return null;
+      }
+    }
+
+    // Global variable to store current sensor data
+    window.currentData = {};
+    
+    // Store 24-hour averages
+    window.dailyAverages = {
+      temperature: 0,
+      humidity: 0,
+      soil: 0
+    };
+    
+    // Calculate 24-hour averages from readings
+    function calculateDailyAverages(readings) {
+      const now = new Date();
+      const oneDayAgo = new Date(now.getTime() - (24 * 60 * 60 * 1000));
+      
+      // Filter readings from the last 24 hours
+      const last24hReadings = readings.filter(r => new Date(r.timestamp) > oneDayAgo);
+      
+      if (last24hReadings.length === 0) return;
+      
+      // Calculate sums
+      const sums = last24hReadings.reduce((acc, reading) => ({
+        temperature: acc.temperature + parseFloat(reading.temperature || 0),
+        humidity: acc.humidity + parseFloat(reading.humidity || 0),
+        soil: acc.soil + parseFloat(reading.soil || 0)
+      }), { temperature: 0, humidity: 0, soil: 0 });
+      
+      // Calculate averages
+      window.dailyAverages = {
+        temperature: Math.round((sums.temperature / last24hReadings.length) * 10) / 10,
+        humidity: Math.round((sums.humidity / last24hReadings.length) * 10) / 10,
+        soil: Math.round((sums.soil / last24hReadings.length) * 10) / 10
+      };
+      
+      // Update donut charts
+      updateDonutCharts();
+    }
+    
+    // Update donut charts with current averages
+    function updateDonutCharts() {
+      const { temperature, humidity, soil } = window.dailyAverages;
+      
+      // Temperature donut (assuming range 15°C to 35°C)
+      const tempPercentage = Math.min(100, Math.max(0, ((temperature - 15) / 20) * 100));
+      tempDonutChart.data.datasets[0].data = [tempPercentage, 100 - tempPercentage];
+      document.getElementById('tempDonutValue').textContent = `${temperature}°C`;
+      
+      // Humidity donut (0-100%)
+      const humPercentage = Math.min(100, Math.max(0, humidity));
+      humDonutChart.data.datasets[0].data = [humPercentage, 100 - humPercentage];
+      document.getElementById('humDonutValue').textContent = `${humidity}%`;
+      
+      // Soil moisture donut (0-100%)
+      const soilPercentage = Math.min(100, Math.max(0, soil));
+      soilDonutChart.data.datasets[0].data = [soilPercentage, 100 - soilPercentage];
+      document.getElementById('soilDonutValue').textContent = `${soil}%`;
+      
+      // Update all charts
+      [tempDonutChart, humDonutChart, soilDonutChart].forEach(chart => chart.update());
+    }
+    
+    // Update Dashboard
+    async function updateDashboard() {
+      const data = await fetchSensorData();
+      if (!data) return;
+      
+      // Store the latest data for the status bar
+      window.currentData = {
+        temperature: data.temperature,
+        humidity: data.humidity,
+        soil: data.soil,
+        timestamp: new Date()
+      };
+
+      // Update current values with visual feedback
+      if (data.temperature !== undefined) {
+        elTemp.textContent = `${data.temperature.toFixed(1)}°C`;
+        // Highlight if temperature is critical
+        const tempCard = elTemp.closest('.dashboard-card');
+        if (data.temperature >= CONFIG.thresholds.tempCritical) {
+          tempCard.classList.add('status-warning');
+        } else {
+          tempCard.classList.remove('status-warning');
+        }
+      }
+      
+      if (data.humidity !== undefined) {
+        elHum.textContent = `${data.humidity.toFixed(1)}%`;
+      }
+      
+      if (data.soil !== undefined) {
+        elSoil.textContent = `${data.soil}%`;
+        // Highlight if soil moisture is critical
+        const soilCard = elSoil.closest('.dashboard-card');
+        if (data.soil <= CONFIG.thresholds.soilCritical) {
+          soilCard.classList.add('status-warning');
+        } else {
+          soilCard.classList.remove('status-warning');
+        }
+      }
+
+      // Update timestamp and system status
+      const now = new Date();
+      elUpd.textContent = now.toLocaleTimeString();
+      
+      // Update system status
+      const timeSinceUpdate = Date.now() - now.getTime();
+      if (timeSinceUpdate > 60000) { // 1 minute
+        elSystemStatus.textContent = 'Offline';
+        elSystemStatus.className = 'status-offline';
+      } else {
+        elSystemStatus.textContent = 'Online';
+        elSystemStatus.className = 'status-online';
+      }
+
+      // Update charts
+      const timeStr = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+      
+      // Add new data points
+      tempData.push(data.temperature || 0);
+      humData.push(data.humidity || 0);
+      soilData.push(data.soil || 0);
+      labels.push(timeStr);
+
+      // Limit data points
+      if (tempData.length > CONFIG.maxDataPoints) {
+        tempData.shift();
+        humData.shift();
+        soilData.shift();
+        labels.shift();
+      }
+
+      // Update charts
+      updateChart(tempChart, tempData, labels);
+      updateChart(humChart, humData, labels);
+      updateChart(soilChart, soilData, labels);
+      
+      // Check thresholds and handle auto mode
+      checkThresholds(data);
+    }
+
+    function updateChart(chart, data, labels) {
+      chart.data.labels = labels;
+      chart.data.datasets[0].data = data;
+      chart.update();
+    }
+
+    // Event Listeners
+    document.getElementById('fan-on')?.addEventListener('click', () => controlDevice('fan', 'on'));
+    document.getElementById('fan-off')?.addEventListener('click', () => controlDevice('fan', 'off'));
+    document.getElementById('pump-on')?.addEventListener('click', () => controlDevice('pump', 'on'));
+    document.getElementById('pump-off')?.addEventListener('click', () => controlDevice('pump', 'off'));
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      // Initialize theme
+      initTheme();
+      
+      // Initialize forecast sections
+      initAIForecast();
+      initWeatherForecast();
+      
+      // Initial data load
+      updateDashboard();
+      
+      // Set up auto-refresh
+      setInterval(updateDashboard, CONFIG.updateInterval);
+      
+      // Set initial status
+      updateStatusBar();
+    });
+    
+    // Update status bar with current values
+    function updateStatusBar() {
+      const now = new Date();
+      
+      // Get the latest sensor data from the dashboard state
+      const temp = window.currentData?.temperature?.toFixed(1) || '--';
+      const hum = window.currentData?.humidity?.toFixed(1) || '--';
+      const soil = window.currentData?.soil?.toFixed(0) || '--';
+      
+      // Update status bar elements with current theme
+      const isDarkMode = document.documentElement.classList.contains('dark');
+      const modeElement = document.getElementById('current-mode');
+      modeElement.textContent = isDarkMode ? 'NIGHT' : 'DAY';
+      modeElement.className = isDarkMode ? 'text-purple-400' : 'text-yellow-500';
+      document.getElementById('temp-status').textContent = `${temp}°C`;
+      document.getElementById('humidity-status').textContent = `${hum}%`;
+      document.getElementById('soil-status').textContent = `${soil}%`;
+      document.getElementById('last-updated').textContent = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'});
+      
+      // Style the status values based on thresholds
+      const tempValue = temp !== '--' ? parseFloat(temp) : null;
+      const humValue = hum !== '--' ? parseFloat(hum) : null;
+      const soilValue = soil !== '--' ? parseInt(soil) : null;
+      
+      // Temperature status
+      const tempStatus = document.getElementById('temp-status');
+      if (tempValue !== null) {
+        if (tempValue >= CONFIG.thresholds.tempCritical) {
+          tempStatus.className = 'text-red-500 font-medium';
+        } else if (tempValue >= CONFIG.thresholds.tempWarning) {
+          tempStatus.className = 'text-yellow-400';
+        } else {
+          tempStatus.className = 'text-green-400';
+        }
+      } else {
+        tempStatus.className = 'text-gray-400';
+      }
+      
+      // Humidity status
+      const humStatus = document.getElementById('humidity-status');
+      if (humValue !== null) {
+        if (humValue < CONFIG.thresholds.humidityLow || humValue > CONFIG.thresholds.humidityHigh) {
+          humStatus.className = 'text-yellow-400';
+        } else {
+          humStatus.className = 'text-blue-400';
+        }
+      } else {
+        humStatus.className = 'text-gray-400';
+      }
+      
+      // Soil moisture status
+      const soilStatus = document.getElementById('soil-status');
+      if (soilValue !== null) {
+        if (soilValue < CONFIG.thresholds.soilCritical) {
+          soilStatus.className = 'text-red-500 font-medium';
+        } else if (soilValue < CONFIG.thresholds.soilWarning) {
+          soilStatus.className = 'text-yellow-400';
+        } else {
+          soilStatus.className = 'text-green-400';
+        }
+      } else {
+        soilStatus.className = 'text-gray-400';
+      }
+      
+      // Update the last updated time
+      document.getElementById('last-updated').textContent = `Updated: ${now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'})}`;
+    }
+  </script>
+</body>
+</html>
